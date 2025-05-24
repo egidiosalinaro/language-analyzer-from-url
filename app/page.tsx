@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 
 export default function Home() {
   const [videoUrl, setVideoUrl] = useState('');
@@ -12,71 +12,6 @@ export default function Home() {
     raw?: string;
   } | null>(null);
   const [error, setError] = useState('');
-  const [uploadMethod, setUploadMethod] = useState<'url' | 'file'>('url');
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const compressVideo = async (file: File): Promise<Blob> => {
-    return new Promise((resolve, reject) => {
-      const video = document.createElement('video');
-      video.preload = 'metadata';
-
-      video.onloadedmetadata = () => {
-        // Set video dimensions (maintain aspect ratio)
-        const maxDimension = 480; // Reduced from 720 to 480
-        let width = video.videoWidth;
-        let height = video.videoHeight;
-
-        if (width > height && width > maxDimension) {
-          height = Math.round((height * maxDimension) / width);
-          width = maxDimension;
-        } else if (height > maxDimension) {
-          width = Math.round((width * maxDimension) / height);
-          height = maxDimension;
-        }
-
-        // Create canvas for video frame
-        const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-
-        // Set up MediaRecorder with more aggressive compression
-        const stream = canvas.captureStream(15); // Reduced from default to 15fps
-        const mediaRecorder = new MediaRecorder(stream, {
-          mimeType: 'video/webm;codecs=vp9',
-          videoBitsPerSecond: 500000, // Reduced from 1Mbps to 500kbps
-        });
-
-        const chunks: Blob[] = [];
-        mediaRecorder.ondataavailable = (e) => chunks.push(e.data);
-        mediaRecorder.onstop = () => {
-          const compressedBlob = new Blob(chunks, { type: 'video/webm' });
-          resolve(compressedBlob);
-        };
-
-        // Start recording
-        mediaRecorder.start();
-
-        // Draw video frames
-        video.oncanplay = () => {
-          if (ctx) {
-            ctx.drawImage(video, 0, 0, width, height);
-          }
-        };
-
-        // Play video
-        video.play();
-
-        // Stop recording after video ends
-        video.onended = () => {
-          mediaRecorder.stop();
-        };
-      };
-
-      video.onerror = () => reject(new Error('Error loading video'));
-      video.src = URL.createObjectURL(file);
-    });
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -85,44 +20,13 @@ export default function Home() {
     setResult(null);
 
     try {
-      let response;
-
-      if (uploadMethod === 'url') {
-        response = await fetch('/api/analyze', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ videoUrl }),
-        });
-      } else {
-        const file = fileInputRef.current?.files?.[0];
-        if (!file) {
-          throw new Error('No file selected');
-        }
-
-        // Compress video
-        const compressedBlob = await compressVideo(file);
-
-        // Convert to base64
-        const reader = new FileReader();
-        const base64Promise = new Promise<string>((resolve) => {
-          reader.onloadend = () => {
-            const base64 = reader.result as string;
-            resolve(base64.split(',')[1]); // Remove data URL prefix
-          };
-        });
-        reader.readAsDataURL(compressedBlob);
-        const base64 = await base64Promise;
-
-        response = await fetch('/api/analyze', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ videoData: base64 }),
-        });
-      }
+      const response = await fetch('/api/analyze', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ videoUrl }),
+      });
 
       if (!response.ok) {
         const errorData = await response.json();
@@ -140,106 +44,138 @@ export default function Home() {
   };
 
   return (
-    <div className='min-h-screen p-8'>
+    <div className='min-h-screen bg-gradient-to-br from-indigo-50 to-purple-50 p-8'>
       <main className='max-w-2xl mx-auto'>
-        <h1 className='text-3xl font-bold mb-8 text-center'>
-          English Accent Analyzer
-        </h1>
+        <div className='text-center mb-12'>
+          <h1 className='text-4xl font-bold mb-4 bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent'>
+            English Accent Analyzer
+          </h1>
+          <p className='text-gray-600'>
+            Paste a Loom video URL or any direct video URL to analyze the
+            speaker's English accent
+          </p>
+        </div>
 
-        <form onSubmit={handleSubmit} className='space-y-4'>
-          <div className='flex space-x-4 mb-4'>
-            <button
-              type='button'
-              onClick={() => setUploadMethod('url')}
-              className={`flex-1 py-2 px-4 rounded-md ${
-                uploadMethod === 'url'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-200 text-gray-700'
-              }`}
+        <form onSubmit={handleSubmit} className='space-y-6'>
+          <div className='relative'>
+            <input
+              type='url'
+              value={videoUrl}
+              onChange={(e) => setVideoUrl(e.target.value)}
+              placeholder='Paste your video URL here (Loom or direct video link)'
+              required
+              className='w-full p-4 pl-12 rounded-xl border-2 border-indigo-100 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all duration-200 bg-white shadow-sm placeholder-gray-400 text-gray-800'
+            />
+            <svg
+              className='absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400'
+              width='20'
+              height='20'
+              viewBox='0 0 24 24'
+              fill='none'
+              stroke='currentColor'
+              strokeWidth='2'
+              strokeLinecap='round'
+              strokeLinejoin='round'
             >
-              URL Upload
-            </button>
-            <button
-              type='button'
-              onClick={() => setUploadMethod('file')}
-              className={`flex-1 py-2 px-4 rounded-md ${
-                uploadMethod === 'file'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-200 text-gray-700'
-              }`}
-            >
-              File Upload
-            </button>
+              <path d='M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71'></path>
+              <path d='M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71'></path>
+            </svg>
           </div>
-
-          {uploadMethod === 'url' ? (
-            <div>
-              <label
-                htmlFor='videoUrl'
-                className='block text-sm font-medium mb-2'
-              >
-                Video URL (Loom or MP4)
-              </label>
-              <input
-                type='url'
-                id='videoUrl'
-                value={videoUrl}
-                onChange={(e) => setVideoUrl(e.target.value)}
-                placeholder='https://...'
-                required
-                className='w-full p-2 border rounded-md'
-              />
-            </div>
-          ) : (
-            <div>
-              <label
-                htmlFor='videoFile'
-                className='block text-sm font-medium mb-2'
-              >
-                Upload Video File
-              </label>
-              <input
-                type='file'
-                id='videoFile'
-                ref={fileInputRef}
-                accept='video/*'
-                required
-                className='w-full p-2 border rounded-md'
-              />
-            </div>
-          )}
 
           <button
             type='submit'
             disabled={loading}
-            className='w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 disabled:opacity-50'
+            className='w-full bg-gradient-to-r cursor-pointer from-indigo-600 to-purple-600 text-white py-4 px-6 rounded-xl font-medium shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200 disabled:opacity-70 disabled:transform-none disabled:shadow-none disabled:cursor-not-allowed'
           >
-            {loading ? 'Analyzing...' : 'Analyze Accent'}
+            {loading ? (
+              <div className='flex items-center justify-center space-x-3'>
+                <svg
+                  className='animate-spin h-5 w-5 text-white'
+                  xmlns='http://www.w3.org/2000/svg'
+                  fill='none'
+                  viewBox='0 0 24 24'
+                >
+                  <circle
+                    className='opacity-25'
+                    cx='12'
+                    cy='12'
+                    r='10'
+                    stroke='currentColor'
+                    strokeWidth='4'
+                  ></circle>
+                  <path
+                    className='opacity-75'
+                    fill='currentColor'
+                    d='M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z'
+                  ></path>
+                </svg>
+                <span>Analyzing...</span>
+              </div>
+            ) : (
+              'Analyze Accent'
+            )}
           </button>
         </form>
 
         {error && (
-          <div className='mt-4 p-4 bg-red-100 text-red-700 rounded-md'>
+          <div className='mt-6 p-4 bg-red-50 border border-red-200 rounded-xl text-red-600 flex items-center'>
+            <svg
+              className='w-5 h-5 mr-2'
+              fill='none'
+              stroke='currentColor'
+              viewBox='0 0 24 24'
+            >
+              <path
+                strokeLinecap='round'
+                strokeLinejoin='round'
+                strokeWidth='2'
+                d='M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z'
+              />
+            </svg>
             {error}
           </div>
         )}
 
         {result && (
-          <div className='mt-8 space-y-4'>
-            <div className='p-4 bg-gray-50 rounded-md'>
-              <h2 className='text-xl font-semibold mb-2'>Results</h2>
-              <div className='space-y-2'>
-                <p>
-                  <span className='font-medium'>Accent:</span> {result.accent}
-                </p>
-                <p>
-                  <span className='font-medium'>Confidence:</span>{' '}
-                  {result.confidence ? result.confidence + '%' : 'N/A'}
-                </p>
-                <div>
-                  <span className='font-medium'>Explanation:</span>
-                  <p className='mt-1 text-gray-600'>{result.explanation}</p>
+          <div className='mt-8'>
+            <div className='bg-white rounded-2xl shadow-xl overflow-hidden border border-indigo-100'>
+              <div className='p-6'>
+                <div className='flex items-center justify-between mb-6'>
+                  <h2 className='text-2xl font-bold text-gray-800'>
+                    Analysis Results
+                  </h2>
+                  <div className='px-4 py-2 bg-indigo-100 rounded-full'>
+                    <span className='text-indigo-700 font-medium'>
+                      {result.confidence}% Confidence
+                    </span>
+                  </div>
                 </div>
+
+                <div className='space-y-6'>
+                  <div>
+                    <h3 className='text-sm font-medium text-gray-500 mb-2'>
+                      Detected Accent
+                    </h3>
+                    <p className='text-3xl font-bold text-indigo-600'>
+                      {result.accent}
+                    </p>
+                  </div>
+
+                  <div>
+                    <h3 className='text-sm font-medium text-gray-500 mb-2'>
+                      Analysis
+                    </h3>
+                    <p className='text-gray-700 leading-relaxed'>
+                      {result.explanation}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className='bg-gradient-to-r from-indigo-50 to-purple-50 p-4 border-t border-indigo-100'>
+                <p className='text-sm text-gray-500'>
+                  Made by Egidio Salinaro · Analysis powered by Gemini AI
+                </p>
               </div>
             </div>
           </div>
