@@ -6,6 +6,19 @@ const RAPIDAPI_KEY = process.env.RAPIDAPI_KEY;
 const GEMINI_API_URL =
   'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro-latest:generateContent';
 
+interface ErrorResponse {
+  message: string;
+  response?: {
+    status?: number;
+    data?: unknown;
+  };
+  config?: {
+    url?: string;
+    method?: string;
+    headers?: Record<string, string>;
+  };
+}
+
 async function verifyTurnstileToken(token: string) {
   const response = await fetch(
     'https://challenges.cloudflare.com/turnstile/v0/siteverify',
@@ -59,16 +72,17 @@ async function getLoomVideoUrl(loomUrl: string): Promise<string> {
     }
 
     return response.data.download_url;
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const err = error as ErrorResponse;
     console.error('[analyze] Error getting Loom video URL:', {
-      message: error.message,
-      status: error.response?.status,
-      data: error.response?.data,
+      message: err.message,
+      status: err.response?.status,
+      data: err.response?.data,
       config: {
-        url: error.config?.url,
-        method: error.config?.method,
+        url: err.config?.url,
+        method: err.config?.method,
         headers: {
-          ...error.config?.headers,
+          ...err.config?.headers,
           'x-rapidapi-key': '***', // Hide the API key in logs
         },
       },
@@ -335,15 +349,16 @@ Respond in JSON with keys: accent, confidence, explanation.`;
       explanation,
       raw: text,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const err = error as ErrorResponse;
     console.error(
       '[analyze] Error processing video with Gemini:',
-      error?.response?.data || error
+      err?.response?.data || err
     );
     return NextResponse.json(
       {
         error: 'Failed to process video with Gemini',
-        details: error?.response?.data,
+        details: err?.response?.data,
       },
       { status: 500 }
     );

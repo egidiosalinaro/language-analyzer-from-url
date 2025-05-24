@@ -3,6 +3,10 @@
 import { useState } from 'react';
 import { Turnstile } from '@marsidev/react-turnstile';
 
+interface ErrorResponse {
+  message: string;
+}
+
 export default function Home() {
   const [videoUrl, setVideoUrl] = useState('');
   const [loading, setLoading] = useState(false);
@@ -44,7 +48,8 @@ export default function Home() {
 
       const data = await response.json();
       setResult(data);
-    } catch (err: any) {
+    } catch (error: unknown) {
+      const err = error as ErrorResponse;
       setError(err.message || 'Failed to analyze video. Please try again.');
       console.error(err);
     } finally {
@@ -72,7 +77,7 @@ export default function Home() {
           </h1>
           <p className='text-gray-600'>
             Paste a Loom video URL or any direct video URL to analyze the
-            speaker's English accent
+            speaker&apos;s English accent
           </p>
         </div>
 
