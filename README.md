@@ -1,8 +1,62 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# English Accent Analyzer
+
+A Next.js application that analyzes English accents from video URLs, powered by Gemini AI. This tool can help identify and explain different English accents from video content, particularly useful for language learning and accent analysis.
+
+## Features
+
+- 🔍 Analyze English accents from video URLs
+- 🎥 Support for Loom videos and direct video links
+- 🤖 Powered by Gemini AI for accurate accent detection
+- 🛡️ Protected by Cloudflare Turnstile to prevent abuse
+- 📱 Responsive and modern UI with Tailwind CSS
+- ⚡ Built with Next.js 15 for optimal performance
+
+## Prerequisites
+
+Before you begin, ensure you have the following:
+
+- Node.js 18.0 or later
+- npm, yarn, or pnpm
+- API keys for:
+  - Gemini AI
+  - RapidAPI (Loom Downloader)
+  - Cloudflare Turnstile
+
+## Environment Variables
+
+Create a `.env` file in the root directory with the following variables:
+
+```env
+GEMINI_API_KEY=your_gemini_api_key
+RAPIDAPI_KEY=your_rapidapi_key
+TURNSTILE_SECRET_KEY=your_turnstile_secret_key
+NEXT_PUBLIC_TURNSTILE_SITE_KEY=your_turnstile_site_key
+```
 
 ## Getting Started
 
-First, run the development server:
+The application is available online at [https://language-analyzer-from-url.vercel.app/](https://language-analyzer-from-url.vercel.app/)
+
+To run it locally:
+
+1. Clone the repository:
+
+```bash
+git clone https://github.com/egidiosalinaro/language-analyzer-from-url.git
+cd language-analyzer-from-url
+```
+
+2. Install dependencies:
+
+```bash
+npm install
+# or
+yarn install
+# or
+pnpm install
+```
+
+3. Run the development server:
 
 ```bash
 npm run dev
@@ -10,27 +64,34 @@ npm run dev
 yarn dev
 # or
 pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+4. Open [http://localhost:3000](http://localhost:3000) with your browser to see the application.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## How It Works
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+1. Users input a video URL (Loom or direct video link)
+2. The application verifies the user through Cloudflare Turnstile
+3. For Loom videos, the app extracts the video content using RapidAPI
+4. The video is processed and analyzed using Gemini AI
+5. Results show the detected accent, confidence level, and detailed analysis
 
-## Learn More
+## Technologies Used
 
-To learn more about Next.js, take a look at the following resources:
+- [Next.js](https://nextjs.org/) - React framework
+- [Tailwind CSS](https://tailwindcss.com/) - Styling
+- [Gemini AI](https://ai.google.dev/) - Accent analysis
+- [Cloudflare Turnstile](https://www.cloudflare.com/products/turnstile/) - Bot protection
+- [RapidAPI](https://rapidapi.com/) - Loom video extraction
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Contributing
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Contributions are welcome! Please feel free to submit a Pull Request.
 
-## Deploy on Vercel
+## License
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+This project is a personal portfolio piece created for demonstration purposes. All rights reserved.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Author
+
+Made by Egidio Salinaro
