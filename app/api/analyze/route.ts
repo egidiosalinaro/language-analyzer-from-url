@@ -6,6 +6,25 @@ const RAPIDAPI_KEY = process.env.RAPIDAPI_KEY;
 const GEMINI_API_URL =
   'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro-latest:generateContent';
 
+async function verifyTurnstileToken(token: string) {
+  const response = await fetch(
+    'https://challenges.cloudflare.com/turnstile/v0/siteverify',
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        secret: process.env.TURNSTILE_SECRET_KEY,
+        response: token,
+      }),
+    }
+  );
+
+  const data = await response.json();
+  return data.success;
+}
+
 async function getLoomVideoUrl(loomUrl: string): Promise<string> {
   // Clean the Loom URL by removing the sid parameter
   const cleanUrl = loomUrl.split('?')[0];
@@ -196,35 +215,38 @@ async function downloadVideo(url: string): Promise<Buffer> {
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
-    const { videoUrl, videoData } = body;
+    const { videoUrl, token } = await request.json();
 
-    if (!videoUrl && !videoData) {
-      console.log('[analyze] No video data provided');
+    if (!token) {
       return NextResponse.json(
-        { error: 'Video URL or video data is required' },
+        { error: 'Missing Turnstile token' },
         { status: 400 }
       );
     }
 
-    let videoBuffer: Buffer;
-    if (videoData) {
-      // Handle direct video data
-      videoBuffer = Buffer.from(videoData, 'base64');
-      console.log(
-        '[analyze] Received video data, size:',
-        videoBuffer.length,
-        'bytes'
-      );
-    } else {
-      // Handle video URL
-      videoBuffer = await downloadVideo(videoUrl);
-      console.log(
-        '[analyze] Downloaded video, size:',
-        videoBuffer.length,
-        'bytes'
+    const isValid = await verifyTurnstileToken(token);
+    if (!isValid) {
+      return NextResponse.json(
+        { error: 'Invalid Cloudflare token. Please paste a new video URL.' },
+        { status: 400 }
       );
     }
+
+    if (!videoUrl) {
+      console.log('[analyze] No video URL provided');
+      return NextResponse.json(
+        { error: 'Video URL is required' },
+        { status: 400 }
+      );
+    }
+
+    // Handle video URL
+    const videoBuffer = await downloadVideo(videoUrl);
+    console.log(
+      '[analyze] Downloaded video, size:',
+      videoBuffer.length,
+      'bytes'
+    );
 
     if (videoBuffer.length > 20 * 1024 * 1024) {
       console.log('[analyze] Video too large for inline Gemini API');

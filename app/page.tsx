@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { Turnstile } from '@marsidev/react-turnstile';
 
 export default function Home() {
   const [videoUrl, setVideoUrl] = useState('');
@@ -12,12 +13,20 @@ export default function Home() {
     raw?: string;
   } | null>(null);
   const [error, setError] = useState('');
+  const [token, setToken] = useState<string | null>(null);
+  const [showTurnstile, setShowTurnstile] = useState(true);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!token) {
+      setError('Please complete the verification');
+      return;
+    }
+
     setLoading(true);
     setError('');
     setResult(null);
+    setShowTurnstile(false); // Hide Turnstile after verification
 
     try {
       const response = await fetch('/api/analyze', {
@@ -25,7 +34,7 @@ export default function Home() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ videoUrl }),
+        body: JSON.stringify({ videoUrl, token }),
       });
 
       if (!response.ok) {
@@ -40,6 +49,17 @@ export default function Home() {
       console.error(err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Reset Turnstile when user starts typing a new URL
+  const handleUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setVideoUrl(e.target.value);
+    if (result || error) {
+      setToken(null);
+      setShowTurnstile(true);
+      setResult(null);
+      setError('');
     }
   };
 
@@ -61,7 +81,7 @@ export default function Home() {
             <input
               type='url'
               value={videoUrl}
-              onChange={(e) => setVideoUrl(e.target.value)}
+              onChange={handleUrlChange}
               placeholder='Paste your video URL here (Loom or direct video link)'
               required
               className='w-full p-4 pl-12 rounded-xl border-2 border-indigo-100 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all duration-200 bg-white shadow-sm placeholder-gray-400 text-gray-800'
@@ -82,9 +102,20 @@ export default function Home() {
             </svg>
           </div>
 
+          {showTurnstile && (
+            <div className='flex justify-center'>
+              <Turnstile
+                siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || ''}
+                onSuccess={setToken}
+                onError={() => setToken(null)}
+                onExpire={() => setToken(null)}
+              />
+            </div>
+          )}
+
           <button
             type='submit'
-            disabled={loading}
+            disabled={loading || !token}
             className='w-full bg-gradient-to-r cursor-pointer from-indigo-600 to-purple-600 text-white py-4 px-6 rounded-xl font-medium shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200 disabled:opacity-70 disabled:transform-none disabled:shadow-none disabled:cursor-not-allowed'
           >
             {loading ? (
